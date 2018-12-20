@@ -23,10 +23,14 @@ pairs.panels(no2,
              density = TRUE  # show density plots
 )
 
+## WindDir Solucionado
+clusterWindDir <- kmeans(windDir,2)
 #car::scatterplotMatrix(no2, col = 1, regLine = list(col = 2), smooth = list(col.smooth = 4, col.spread = 4))
 
 mod <- lm(particles ~ ., data = no2)
 modBIC <- stepAIC(mod, k=log(length(particles)))
+
+hist(modBIC$residuals)
 
 no2BIC <- no2[,c(1,2,3,4,5,7)]
 head(no2BIC)
@@ -105,3 +109,10 @@ abline(mod7$coefficients, col = "red")
 # Fix or get rid of day since it has a very weird shape
 # Redo the multiple linear model with the fixed variables and only taking into account those that seem important
 # Test that all model assumptions are met (i.e. error normality, etc)
+# Try to fit a sin/cos regression function between carsHour and Time
+# 1.- Descripcion general del dataset (Sacar estadisticos de cada variable)
+# 2.- Preprocesado -> windDir y day y time
+# 3.- Descripcion "Asi ha quedado el dataset"
+# 4.- Probar modelo lineal (Comprobar que se cumplen las hipotesis del modelo lineal)
+# 5.- Probar modelos no lineales (x^2+xy+y^2+x+y+intercept etc)
+# 6.- Lasso y ridge regression
