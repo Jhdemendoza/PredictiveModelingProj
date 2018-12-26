@@ -52,6 +52,94 @@ pairs.panels(no2BIC,
 
 summary(modBIC)
 
+#############################################NEW##############################################
+## Linear model with wind direction fixed
+no2$windDir <- clusterWindDir$cluster
+head(no2)
+for (i in 1:nrow(no2)) {
+  no2$windDir[i] <- no2$windDir[i]-1
+}
+head(no2)
+## In this plot we can see that windDirection does not have an influence on the particles
+pairs.panels(no2[,c(1,2,3,4,5,7,8)],
+             method = "pearson", # correlation method
+             hist.col = "#00146E",
+             lm = FALSE,
+             ellipses = FALSE,
+             smooth = FALSE,
+             pch = c(21,21)[clusterWindDir$cluster],
+             bg=c("green", "red")[clusterWindDir$cluster],
+             rug = FALSE,
+             cex.cor = 5,
+             scale = TRUE,
+             density = TRUE  # show density plots
+)
+## As seen in the plot the Bayesian Information Criteria supresses the variable WindDirection
+modClean1 <- lm(particles ~ ., data = no2)
+summary(modClean1)
+modCleanBIC1 <- stepAIC(modClean1, k = log(length(particles)))
+summary(modCleanBIC1)
+############################################################################################
+
+##################################NEW#######################################
+## Clean day by season. The day variable is measured as number of days from October 1. 2001
+## October, November, December --> Autumn (2) 0-91; 366-457
+## January, February, March --> Winter (3) 92-183; 458-549
+## April, May, June --> Spring (0) 184-275; 549-608
+## July, August, September --> Summer (1) 276-365
+summary(day)
+seasons <- day
+for (i in 1:length(day)) {
+  if ((day[i] >= 0 && day[i] <= 91) || (day[i] >= 366 && day[i] <= 457)) {
+    seasons[i] <- "Autumn"
+  }
+  else if ((day[i] >= 92 && day[i] <= 183) || (day[i] >= 458 && day[i] <= 549)) {
+    seasons[i] <- "Winter"
+  }
+  else if ((day[i] >= 184 && day[i] <= 275) || (day[i] >= 549 && day[i] <= 608)) {
+    seasons[i] <- "Spring"
+  }
+  else if (day[i] >= 276 && day[i] <= 365) {
+    seasons[i] <- "Summer"
+  }
+}
+head(seasons)
+no2$day <- as.factor(seasons)
+## Like in the previous case it seems like there is not much relation between the season and the particles
+pairs.panels(no2[,c(1,2,3,4,5,6,7)],
+             method = "pearson", # correlation method
+             hist.col = "#00146E",
+             lm = FALSE,
+             ellipses = FALSE,
+             smooth = FALSE,
+             pch = c(21,21,21,21)[as.factor(seasons)],
+             bg=c("green", "red", "yellow", "blue")[as.factor(seasons)],
+             rug = FALSE,
+             cex.cor = 5,
+             scale = TRUE,
+             density = TRUE  # show density plots
+)
+as.factor(seasons)
+no2$day <- relevel(no2$day, ref = "Spring")
+## As expected the BIC gets rid of the season variable...
+modClean2 <- lm(particles ~ ., data = no2)
+summary(modClean2)
+modCleanBIC2 <- stepAIC(modClean2, k = log(length(particles)))
+summary(modCleanBIC2)
+############################################################################################
+
+##################################NEW#######################################
+## We are going to try to prove that time has a trigonometric relation with carsHour
+summary(time)
+per <- max(time)
+plot(carsHour~time) 
+timePlot <- linspace(1, 24, 1000)
+lines(6.2 - 2*sin((2*pi/24)*timePlot)~timePlot)
+## Difficult to fit a model, with this I think we can show the trigonometric relation between time and carsHour
+## which is enough to not use it
+############################################################################################
+
+
 ## particles vs carsHour (I could see a linear relation)
 mod1 <- lm(particles ~ carsHour, data = no2)
 summary(mod1)
@@ -111,11 +199,18 @@ abline(mod7$coefficients, col = "red")
 # Test that all model assumptions are met (i.e. error normality, etc)
 # Try to fit a sin/cos regression function between carsHour and Time
 # 1.- Descripcion general del dataset (Sacar estadisticos de cada variable)
-# 2.- Preprocesado -> windDir y day y time
+# 2.- Preprocesado -> windDir y day y time ****************DONE*****************
 # 3.- Descripcion "Asi ha quedado el dataset"
 # 4.- Probar modelo lineal (Comprobar que se cumplen las hipotesis del modelo lineal)
 # 5.- Probar modelos no lineales (x^2+xy+y^2+x+y+intercept etc)
 # 6.- Lasso y ridge regression
+
+
+
+
+############################################################################################
+############################################################################################
+############################################################################################
 
 ## PARTE ALVARO
 #setwd("/Users/Jaime/Desktop/Master/PredictiveModeling/Project1/")
@@ -124,9 +219,9 @@ library("psych")
 library("MASS")
 library("scatterplot3d")
 
-#La primera es el azul, la segunda el mostaza - En función de la dirección del viento
+#La primera es el azul, la segunda el mostaza - En funci?n de la direcci?n del viento
 my_cols_wind <- c("#00AFBB", "#E7B800")
-#En función de las estaciones - azul_invierno - verde_primavera - naranja_verano - marron_otoño
+#En funci?n de las estaciones - azul_invierno - verde_primavera - naranja_verano - marron_oto?o
 my_cols_season <- c("#194edf", "#0dd611","#eebd27","#a57942")
 my_cols_season["Winter"]
 str(season)
