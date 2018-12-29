@@ -134,7 +134,14 @@ summary(time)
 per <- max(time)
 plot(carsHour~time) 
 timePlot <- linspace(1, 24, 1000)
-lines(6.2 - 2*sin((2*pi/24)*timePlot)~timePlot)
+lines(6.2 - 2.2*sin((2*pi/24)*timePlot)~timePlot)
+asinCarsHour <- (24/(2*pi))*asin((1/2.2)*(6.2 - carsHour))
+plot((24/(2*pi))*asin((1/2.2)*(6.2 - carsHour))~time)
+lines((24/(2*pi))*asin((1/2.2)*(6.2 - carsPlot))~timePlot)
+
+summary(carsHour)
+carsPlot <- linspace(4.13, 8.35, 1000)
+plot((24/(2*pi))*asin((1/2.2)*(6.2 - carsPlot))~timePlot)
 ## Difficult to fit a model, with this I think we can show the trigonometric relation between time and carsHour
 ## which is enough to not use it
 ############################################################################################
