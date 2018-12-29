@@ -1,8 +1,11 @@
 setwd("/Users/Jaime/Desktop/Master/PredictiveModeling/Project1/")
+#setwd("C:/Users/alvaro/Desktop/Segundo_Semicuatrimestre/PredictiveModelling/Group_project")
 
 library("psych")
 library("MASS")
 library("scatterplot3d")
+library("pracma")
+dev.off()
 
 no2 = read.csv("NO2.csv ", col.names = c("particles", "carsHour", "temp2", "windSpeed", "tempDiff25to2", "windDir", "time", "day"))
 attach(no2)
@@ -24,14 +27,17 @@ pairs.panels(no2,
 )
 
 ## WindDir Solucionado
-clusterWindDir <- kmeans(windDir,2)
+clusterWindDir <- kmeans(windDir,2)$cluster
+
 #car::scatterplotMatrix(no2, col = 1, regLine = list(col = 2), smooth = list(col.smooth = 4, col.spread = 4))
 
 mod <- lm(particles ~ ., data = no2)
 modBIC <- stepAIC(mod, k=log(length(particles)))
 
-hist(modBIC$residuals)
 
+## Does residuals follow normal distribution?
+plot(density(modBIC$residuals),col="red")
+lines(col="blue",x = density(rnorm(n = 10000,sd=sd(modBIC$residuals))))
 no2BIC <- no2[,c(1,2,3,4,5,7)]
 head(no2BIC)
 
@@ -54,21 +60,29 @@ summary(modBIC)
 
 #############################################NEW##############################################
 ## Linear model with wind direction fixed
-no2$windDir <- clusterWindDir$cluster
-head(no2)
+
+par(mfrow=c(1,2))
+temp=data.frame("Direction"=no2$windDir,"Speed"=no2$windSpeed)
+plot(x = temp$Speed*cos(temp$Direction/365),y = temp$Speed*sin(temp$Direction/365),pch=19,xlab = "",ylab = "")
+no2$windDir <- clusterWindDir
+plot(x = temp$Speed*cos(temp$Direction/365),y = temp$Speed*sin(temp$Direction/365),col=no2$windDir,pch=19,xlab = "",ylab = "")
+dev.off() ### To reset the graphs
+
 for (i in 1:nrow(no2)) {
   no2$windDir[i] <- no2$windDir[i]-1
 }
 head(no2)
+
 ## In this plot we can see that windDirection does not have an influence on the particles
+
 pairs.panels(no2[,c(1,2,3,4,5,7,8)],
              method = "pearson", # correlation method
              hist.col = "#00146E",
              lm = FALSE,
              ellipses = FALSE,
              smooth = FALSE,
-             pch = c(21,21)[clusterWindDir$cluster],
-             bg=c("green", "red")[clusterWindDir$cluster],
+             pch = c(21,21)[clusterWindDir],
+             bg=c("green", "red")[clusterWindDir],
              rug = FALSE,
              cex.cor = 5,
              scale = TRUE,
@@ -77,8 +91,9 @@ pairs.panels(no2[,c(1,2,3,4,5,7,8)],
 ## As seen in the plot the Bayesian Information Criteria supresses the variable WindDirection
 modClean1 <- lm(particles ~ ., data = no2)
 summary(modClean1)
-modCleanBIC1 <- stepAIC(modClean1, k = log(length(particles)))
-summary(modCleanBIC1)
+
+modCleanAIC1 <- stepAIC(modClean1, k = log(length(particles)))
+summary(modCleanAIC1)
 ############################################################################################
 
 ##################################NEW#######################################
@@ -132,27 +147,63 @@ summary(modCleanBIC2)
 ## We are going to try to prove that time has a trigonometric relation with carsHour
 summary(time)
 per <- max(time)
-plot(carsHour~time) 
+plot(carsHour~time)
 timePlot <- linspace(1, 24, 1000)
-lines(6.2 - 2.2*sin((2*pi/24)*timePlot)~timePlot)
-asinCarsHour <- (24/(2*pi))*asin((1/2.2)*(6.2 - carsHour))
-plot((24/(2*pi))*asin((1/2.2)*(6.2 - carsHour))~time)
-lines((24/(2*pi))*asin((1/2.2)*(6.2 - carsPlot))~timePlot)
-
-summary(carsHour)
-carsPlot <- linspace(4.13, 8.35, 1000)
-plot((24/(2*pi))*asin((1/2.2)*(6.2 - carsPlot))~timePlot)
+lines(6.2 - 2.2*sin((2*pi/24)*(timePlot+1.8))~timePlot)
 ## Difficult to fit a model, with this I think we can show the trigonometric relation between time and carsHour
 ## which is enough to not use it
 ############################################################################################
 
+######## NEW #########################################################
+## Linear model without time and with the rest of the variables fixed
+head(no2)
+cleanModel <- lm(no2[,c(1,2,3,4,5,6,8)])
+cleanModelBIC <- stepAIC(cleanModel, k = log(length(particles)))
+summary(cleanModelBIC)
+head(no2)
+pairs.panels(no2[,c(1,2,3,4,5)],
+             method = "pearson", # correlation method
+             hist.col = "#00146E",
+             lm = FALSE,
+             ellipses = FALSE,
+             smooth = FALSE,
+             #pch = c(21,21,21,21)[as.factor(seasons)],
+             #bg=c("green", "red", "yellow", "blue")[as.factor(seasons)],
+             rug = FALSE,
+             cex.cor = 5,
+             scale = TRUE,
+             density = TRUE  # show density plots
+)
 
-## particles vs carsHour (I could see a linear relation)
+############################################## NEW ##############################################
+## Check model assuptions
+plot(cleanModelBIC) ### This returns various graphs that might help seeing if the model assumptions are met
+##### Linearity -> Difficult to check, but we've been able to prove the trigonometric relation between
+##### carsHour and time and we have got rid of it.
+
+##### Error normality -> With the two graphs we can check that the residual errors are almos normal.
+plot(density(cleanModelBIC$residuals),col="red")
+lines(col="blue",x = density(rnorm(n = 10000,sd=sd(cleanModelBIC$residuals))))
+plot(cleanModelBIC$residuals)
+## The residual errors are "normal enough"
+#####
+
+##### Homoscedasticity -> The variance is approximately constant
+ncvTest(cleanModelBIC)
+#####
+## Don't know how to check for independence, we might have to "see" it from the graph
+
+#############################################################################
+
+## particles vs carsHour (I could see a linear relation) -> Low R^2?
 mod1 <- lm(particles ~ carsHour, data = no2)
 summary(mod1)
 
+library(car)
 scatterplot(particles ~ carsHour, col = 1, regLine = FALSE, smooth = FALSE)
 abline(mod1$coefficients, col = "red")
+plot(density(mod1$residuals))
+lines(density(rnorm(n=10000,sd=sd(mod1$residuals))),col="blue")
 #abline(modBIC$coefficients[1:2], col = "green")
 
 ## particles vs temp2 (Cannot see a linear relation)
@@ -161,6 +212,10 @@ summary(mod2)
 
 scatterplot(particles ~ temp2, col = 1, regLine = FALSE, smooth = FALSE)
 abline(mod2$coefficients, col = "red")
+plot(density(mod2$residuals))
+lines(density(rnorm(n=10000,sd=sd(mod2$residuals))),col="blue")
+
+
 
 ## particles vs windSpeed (There is a linear relation)
 mod3 <- lm(particles ~ windSpeed)
@@ -200,31 +255,63 @@ scatterplot(particles, day, col = 1, regLine = FALSE, smooth = FALSE)
 abline(mod7$coefficients, col = "red")
 
 ## TODO:
-# Split WindDir in two groups
-# Fix or get rid of day since it has a very weird shape
+# Split WindDir in two groups *****DONE*****
+# Fix or get rid of day since it has a very weird shape ****DONE****
 # Redo the multiple linear model with the fixed variables and only taking into account those that seem important
 # Test that all model assumptions are met (i.e. error normality, etc)
-# Try to fit a sin/cos regression function between carsHour and Time
-# 1.- Descripcion general del dataset (Sacar estadisticos de cada variable)
+# Try to fit a sin/cos regression function between carsHour and Time ****DONE****
+# 1.- Descripcion general del dataset (Sacar estadisticos de cada variable) ******Almost Done*****
 # 2.- Preprocesado -> windDir y day y time ****************DONE*****************
 # 3.- Descripcion "Asi ha quedado el dataset"
 # 4.- Probar modelo lineal (Comprobar que se cumplen las hipotesis del modelo lineal)
 # 5.- Probar modelos no lineales (x^2+xy+y^2+x+y+intercept etc)
 # 6.- Lasso y ridge regression
 
+######################Descripcion General Dataset############3
 
 
+
+##########Descriptive Analisis for each variable######################
+head(no2)
+str(no2[1:5,])
+boxplot(sapply(no2[,sapply(no2,is.numeric)],scale))
+
+str(no2)
+
+box_plot<-function(data){
+  par(mfrow=c(2,4))
+  for (i in 1:length(data)){
+    boxplot(data[,i],main=names(data)[i])
+    text(x = 1.4,labels = round(boxplot.stats(data[,i])$stats,1),y = boxplot.stats(data[,i])$stats)
+  }
+}
+box_plot(no2[,sapply(no2,class)!="factor"])
+
+
+#Normalized data
+dat=data.frame(sapply(no2,scale))
+box_plot(dat)
+
+variable_analysis<-function(data,chart_name="chart_name"){
+  par(mfrow=c(1,2),oma=c(0,0,2,0))
+  
+  boxplot(data,main=names(data),title="Boxplot")
+  text(x = 1.4,labels = round(boxplot.stats(data)$stats,1),y = boxplot.stats(data)$stats)
+  
+  #boxplot(scale(data),main=names(data))
+  #text(x = 1.4,labels = round(boxplot.stats(scale(data))$stats,1),y = boxplot.stats(scale(data))$stats)
+  
+  plot(density(boxplot.stats((data))$stats),main = "",xlab = "")  
+  
+  mtext(chart_name,outer = T,cex=2)
+}
+
+#To be repeated with all variables
+variable_analysis(no2[,1],names(no2)[1])
 
 ############################################################################################
 ############################################################################################
 ############################################################################################
-
-## PARTE ALVARO
-#setwd("/Users/Jaime/Desktop/Master/PredictiveModeling/Project1/")
-setwd("C:/Users/alvaro/Desktop/Segundo_Semicuatrimestre/PredictiveModelling/Group_project")
-library("psych")
-library("MASS")
-library("scatterplot3d")
 
 #La primera es el azul, la segunda el mostaza - En funci?n de la direcci?n del viento
 my_cols_wind <- c("#00AFBB", "#E7B800")
@@ -232,92 +319,10 @@ my_cols_wind <- c("#00AFBB", "#E7B800")
 my_cols_season <- c("#194edf", "#0dd611","#eebd27","#a57942")
 my_cols_season["Winter"]
 str(season)
-no2 = read.csv("NO2.csv ", col.names = c("particles", "carsHour", "temp2", "windSpeed", "tempDiff25to2", "windDir", "time", "day"))
-attach(no2)
-head(no2)
-names(no2)
 
 #Pre-processing data: 
 # Dates: fix_dates[dates,season]
 # Wind: wind_clus[wind_clus] 1 or 2 depending on the angle of the wind!
-
-#---------------Fixing Dates---------------------
-plot(no2$day)
-fix_dates_step_1<-sapply(no2$day,FUN=function(x){if(x>300) (x-365) else x})
-fix_dates_step_2<-sapply(fix_dates_step_1,FUN=function(x){if(x<90) (365-x) else x-90})
-
-including_season<-function(dates){
-  q<-quantile(c(0:365))
-  dat=data.frame(dates)
-  dat["season"]="Autum"
-  dat[dates<q[4],2]="Summer"
-  dat[dates<q[3],2]="Spring"
-  dat[dates<q[2],2]="Winter"
-  dat[,2]<-as.factor(dat[,2])
-  names(dat)<-c("dates","season")
-  return(dat)
-}
-
-fix_dates<-including_season(fix_dates_step_2)
-season<-as.factor(fix_dates$season)
-
-#season
-#There is no data for summer!
-
-
-str(fix_dates)
-plot(fix_dates[,1],col=fix_dates[,2])
-
-#----------------Analyzing wind direction-----------------
-windDir_polar<-sapply(X = windDir,FUN = function(x){x/360})
-windDir_polar<-cbind(windSpeed,windDir_polar)
-windDir_polar
-
-applying_cos <- function(x){
-  return(data.frame(cos(x[,2])*x[,1],sin(x[,2])*x[,1]))
-}
-
-windDir_cart<-applying_cos(windDir_polar[,])
-windDir_clus<-kmeans(windDir_polar[,2],2)
-plot(windDir_cart,col=windDir_clus$cluster,pch=19)
-windDir_cart["cluster"]=as.factor(windDir_clus$cluster)
-names(windDir_cart)<-c("x","y","cluster")
-
-class(windDir_clus$cluster)
-plot(windDir_cart[,1:2],col=my_cols_wind[windDir_cart$cluster])
-wind_clus<-data.frame(windDir_cart$cluster)
-names(wind_clus)<-c("cluster")
-
-#As a result of the analysis, a data frame of 1 column with the cluster of the wind!
-direction<-as.factor(wind_clus$cluster)
-
-no2_clean<-no2[,-c(6,8)]
-
-
-#----------Ploting by Season-----------------
-
-pairs(no2_clean,
-      pch = c(21,21,21)[season],
-      bg=my_cols_season[season]
-)
-
-#Excluding Winter
-pairs(no2_clean[season!="Winter",],
-      pch = c(21,21,21)[season[season!="Winter"]],
-      bg=my_cols_season[season[season!="Winter"]]
-)
-
-#Excluding Spring
-pairs(no2_clean[season!="Spring",],
-      pch = c(21,21,21)[season[season!="Spring"]],
-      bg=my_cols_season[season[season!="Spring"]]
-)
-
-#Excluding Autum
-pairs(no2_clean[season!="Autum",],
-      pch = c(21,21,21)[season[season!="Autum"]],
-      bg=my_cols_season[season[season!="Autum"]]
-)
 
 
 #--------------Ploting by Direction------------------
@@ -382,8 +387,3 @@ abline(modBIC$coefficients[1:2], col = "red")
 scatterplot(particles ~ time, col = 1, regLine = FALSE, smooth = FALSE)
 abline(modBIC$coefficients[1:2], col = "red")
 
-sapply(X = no2,FUN = class)
-str(no2)
-summary(no2)
-names(no2)
-boxplot(apply(X=no2,FUN = scale,MARGIN = 2)[,c(1,2,3,4,5)])
