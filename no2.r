@@ -195,6 +195,30 @@ ncvTest(cleanModelBIC)
 
 #############################################################################
 
+################################ NEW #######################################
+## Non-linear models
+### BIC with first order interactions
+modFirstOrder <- stepAIC(object = lm(particles ~ ., data = no2), scope = particles ~ .^2, k = log(length(particles)), trace = 0)
+BIC(modFirstOrder)
+summary(modFirstOrder)
+## Mejora el modelo al tener en cuenta interacciones de primer orden
+## Modelo teniendo en cuenta cuadrados tambien, aunque no aumenta demasiado el adjusted R^2
+## asi que yo creo que no merece la pena utilizar los cuadrados de las variables. Ademas el BIC no se reduce mucho
+summary(no2)
+carsHourSq <- poly(x = carsHour, degree = 2, raw = TRUE)
+temp2Sq <- poly(x = temp2, degree = 2, raw = TRUE)
+windSpeedSq <- poly(x = windSpeed, degree = 2, raw = TRUE)
+tempDiff25to2Sq <- poly(x = tempDiff25to2, degree = 2, raw = TRUE)
+no2Sq <- data.frame("particles" = particles,
+                    "carsHour" = carsHourSq[,1], "carsHourSq" = carsHourSq[,2],
+                    "temp2" = temp2Sq[,1], "temp2Sq" = temp2Sq[,2],
+                    "windSpeed" = windSpeedSq[,1], "windSpeedSq" = windSpeedSq[,2],
+                    "tempDiff25to2" = tempDiff25to2Sq[,1], "tempDiff25to2Sq" = tempDiff25to2Sq[,2])
+modFirstOrderWithSq <- stepAIC(object = lm(particles ~ ., data = no2Sq), scope = particles ~ .^2, k = log(length(particles)), trace = 0)
+BIC(modFirstOrderWithSq)
+summary(modFirstOrderWithSq)
+#############################################################################
+
 ## particles vs carsHour (I could see a linear relation) -> Low R^2?
 mod1 <- lm(particles ~ carsHour, data = no2)
 summary(mod1)
@@ -263,11 +287,16 @@ abline(mod7$coefficients, col = "red")
 # 1.- Descripcion general del dataset (Sacar estadisticos de cada variable) ******Almost Done*****
 # 2.- Preprocesado -> windDir y day y time ****************DONE*****************
 # 3.- Descripcion "Asi ha quedado el dataset"
-# 4.- Probar modelo lineal (Comprobar que se cumplen las hipotesis del modelo lineal)
+### Este punto esta practicamente hecho porque con la descripcion general del dataset y teniendo en cuenta que
+### BIC ya nos elimina muchas variables y que nosotros eliminamos time por no ser lineal con particles y porque
+### sigue una relacion trigonometrica con carsHour, en realidad la descripcion esta hecha
+# 4.- Probar modelo lineal (Comprobar que se cumplen las hipotesis del modelo lineal) ******* DONE ********
+### Aun asi deberiamos mirar bien esto: https://bookdown.org/egarpor/PM-UC3M/lm-ii-diagnostics.html
+### Creo que tenemos todas estas graficas pero por si las moscas
 # 5.- Probar modelos no lineales (x^2+xy+y^2+x+y+intercept etc)
 # 6.- Lasso y ridge regression
 
-######################Descripcion General Dataset############3
+######################Descripcion General Dataset############
 
 
 
