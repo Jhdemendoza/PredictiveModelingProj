@@ -68,7 +68,8 @@ pairs(no2[c(sapply(no2,class)!="factor")],col=no2$day)
 
 ############################# MODELS ##################################
 
-mod <- lm(no2[,c(1,2,3,4,5,6,8)])
+mod <- lm(particles ~ no2[,c(2,3,4,5,6,8)])
+summary(mod)
 modBIC <- stepAIC(mod, k=log(length(particles)))
 cleanModel <- lm(no2[,c(1,2,3,4,5,6,8)])
 cleanModelBIC <- stepAIC(cleanModel, k = log(length(particles)))
