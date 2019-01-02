@@ -68,7 +68,7 @@ pairs(no2[c(sapply(no2,class)!="factor")],col=no2$day)
 
 ############################# MODELS ##################################
 
-mod <- lm(particles ~ no2[,c(2,3,4,5,6,8)])
+mod <- lm(particles ~ ., data = no2[,c(1,2,3,4,5,6,8)])
 summary(mod)
 modBIC <- stepAIC(mod, k=log(length(particles)))
 cleanModel <- lm(no2[,c(1,2,3,4,5,6,8)])
@@ -266,7 +266,7 @@ variable_analysis(time, "Time of the day")
 
 summary(no2)
 ## 
-no2Matrix <- model.matrix.lm(particles ~ 0+., data = no2[,c(2,3,4,5,6,7,8)], na.action = "na.pass")
+no2Matrix <- model.matrix.lm(particles ~ 0+., data = no2[,c(1,2,3,4,5,6,8)], na.action = "na.pass")
 
 ridgeMod <- glmnet(x = no2Matrix, y = particles, alpha = 0)
 summary(ridgeMod)
@@ -311,8 +311,7 @@ kcvLasso$lambda.1se
 range(kcvLasso$lambda)
 plot(kcvLasso)
 
-ncvLasso <- cv.glmnet(x = no2Matrix, y = particles, alpha = 1, nfolds = nrow(Hitters),
-                      lambda = lambdaGrid)
+ncvLasso <- cv.glmnet(x = no2Matrix, y = particles, alpha = 1, nfolds = 10,lambda = lambdaGrid)
 plot(ncvLasso)
 
 modLassoCV <- kcvLasso$glmnet.fit
