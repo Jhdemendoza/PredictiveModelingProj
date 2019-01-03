@@ -70,6 +70,7 @@ pairs(no2[c(sapply(no2,class)!="factor")],col=no2$day)
 
 mod <- lm(particles ~ ., data = no2[,c(1,2,3,4,5,6,8)])
 summary(mod)
+anova(mod)
 modBIC <- stepAIC(mod, k=log(length(particles)))
 cleanModel <- lm(no2[,c(1,2,3,4,5,6,8)])
 cleanModelBIC <- stepAIC(cleanModel, k = log(length(particles)))
@@ -109,7 +110,10 @@ lines(col="blue",x = density(rnorm(n = 10000,sd=sd(cleanModelBIC$residuals))))
 ##### Homoscedasticity -> The variance is approximately constant
 ncvTest(cleanModelBIC)
 ## Don't know how to check for independence, we might have to "see" it from the graph
-
+lag.plot(cleanModelBIC$residuals, lags = 1, do.lines = FALSE)
+durbinWatsonTest(cleanModelBIC)
+##### Multicollinearity
+vif(cleanModelBIC)
 ## Non-linear models
 ### BIC with first order interactions
 modFirstOrder <- stepAIC(object = lm(particles ~ ., data = no2), scope = particles ~ .^2, k = log(length(particles)), trace = 0)
@@ -266,7 +270,7 @@ variable_analysis(time, "Time of the day")
 
 summary(no2)
 ## 
-no2Matrix <- model.matrix.lm(particles ~ 0+., data = no2[,c(1,2,3,4,5,6,8)], na.action = "na.pass")
+no2Matrix <- model.matrix.lm(particles ~ 0+carsHour+windSpeed+temp2+tempDiff25to2+no2$day+no2$windDir, na.action = "na.pass")
 
 ridgeMod <- glmnet(x = no2Matrix, y = particles, alpha = 0)
 summary(ridgeMod)
