@@ -1,6 +1,3 @@
-setwd("/Users/Jaime/Desktop/Master/PredictiveModeling/Project1/")
-setwd("C:/Users/alvaro/Desktop/Segundo_Semicuatrimestre/PredictiveModelling/Group_project")
-
 ##################################Importing necessary libraries ###########
 library("psych")
 library("MASS")
