@@ -1,3 +1,4 @@
+setwd("/Users/Jaime/Desktop/Master/PredictiveModeling/Project1/NO2/")
 ##################################Importing necessary libraries ###########
 library("psych")
 library("MASS")
@@ -8,7 +9,7 @@ library("car")
 library("glmnet")
 
 ##################################Loading the dataset##################################
-no2 = read.csv("NO2.csv ", col.names = c("particles", "carsHour", "temp2", "windSpeed", "tempDiff25to2", "windDir", "time", "day"))
+no2 = read.csv("NO2.csv", col.names = c("particles", "carsHour", "temp2", "windSpeed", "tempDiff25to2", "windDir", "time", "day"))
 attach(no2)
 head(no2)
 
@@ -30,30 +31,29 @@ pairs.panels(no2,
 
 ##################################FIXING THE VARIABLES#######################################
 ## Cleaning day by season. The day variable is measured as number of days from October 1. 2001
-
+# Spring = 0; Summer = 1; Autumn = 2; Winter = 3
 summary(day)
 seasons <- day
 for (i in 1:length(day)) {
   if ((day[i] >= 0 && day[i] <= 91) || (day[i] >= 366 && day[i] <= 457)) {
-    seasons[i] <- "Autumn"
+    seasons[i] <- as.double(2)
   }
   else if ((day[i] >= 92 && day[i] <= 183) || (day[i] >= 458 && day[i] <= 549)) {
-    seasons[i] <- "Winter"
+    seasons[i] <- as.double(3)
   }
   else if ((day[i] >= 184 && day[i] <= 275) || (day[i] >= 549 && day[i] <= 608)) {
-    seasons[i] <- "Spring"
+    seasons[i] <- as.double(0)
   }
   else if (day[i] >= 276 && day[i] <= 365) {
-    seasons[i] <- "Summer"
+    seasons[i] <- as.double(1)
   }
 }
 
-no2$day <- as.factor(seasons)
-no2$day <- relevel(no2$day, ref = "Spring")
+no2$day <- seasons
 
 ## Fixing wind direction by splitting it into two clusters since there seems to be two clearly different wind directions
 clusterWindDir <- kmeans(windDir,2)$cluster
-no2$windDir<-as.factor(clusterWindDir)
+no2$windDir<-clusterWindDir-1
 
 #Ploting the data coloring according to the categorical values (No clear difference in the data with these two groupings):
 pairs(no2[c(sapply(no2,class)!="factor")],col=no2$windDir)
@@ -295,3 +295,76 @@ bestLasso <- glmnet(x = no2Matrix, y = particles, alpha = 1, lambda = kcvLasso$l
 bestLasso$beta
 # As expected we should only take into account carsHour, temp2, windSpeed and tempDiff25to2 since they have the 
 # highest coefficients both in Ridge and Lasso regression models
+
+simpleBICClassification <- stepAIC(glm(I(particles > 3.85) ~ ., data = no2), k = log(length(particles)))
+summary(simpleBICClassification)
+yHat <- simpleBICClassification$fitted.values > 0.5
+tab <- table(I(particles > 3.85), yHat)
+tab
+sum(diag(tab)) / sum(tab)
+## Not worthy to take into consideration interactions
+interactionsBICClassification <- stepAIC(glm(I(particles > 3.85) ~ .^2, data = no2), k = log(length(particles)))
+summary(interactionsBICClassification)
+yHat <- interactionsBICClassification$fitted.values > 0.5
+tab <- table(I(particles > 3.85), yHat)
+tab
+sum(diag(tab)) / sum(tab)
+## Squareing the variables improves the results, althouhg we need 10 predictors for this model
+squaredBICClassidication <- stepAIC(glm(I(particles > 3.85) ~ .^2, data = no2Sq), k = log(length(particles)))
+summary(squaredBICClassidication)
+yHat <- squaredBICClassidication$fitted.values > 0.5
+tab <- table(I(particles > 3.85), yHat)
+tab
+sum(diag(tab)) / sum(tab)
+
+# 0 = Madrugada (0-6); 1 = Ma??ana (6-12); 2 = Tarde (12-18); 3 = Noche (18 - 24)
+timeOfDay <- time
+for (i in 1:length(time)) {
+  if (time[i] >= 0 && time[i] < 6) {
+    timeOfDay[i] <- 1
+  }
+  else if (time[i] >= 6 && time[i] < 12) {
+    timeOfDay[i] <- 2
+  }
+  else if (time[i] >= 12 && time[i] < 18) {
+    timeOfDay[i] <- 3
+  }
+  else if (time[i] >= 18) {
+    timeOfDay[i] <- 4
+  }
+}
+
+no2Aux <- data.frame("particles" = particles, "carsHour" = carsHour, "temp2" = temp2, "tempDiff25to2" = tempDiff25to2, "windSpeed" = windSpeed, "day" = no2$day, "windDir" = no2$windDir, "timeOfDay" = timeOfDay)
+
+# Time of the day separates the amount of cars per hour which makes total sense.
+plot(particles ~ carsHour, data = no2Aux, col = timeOfDay)
+plot(particles ~ temp2, data = no2Aux, col = timeOfDay)
+plot(particles ~ tempDiff25to2, data = no2Aux, col = timeOfDay)
+plot(particles ~ windSpeed, data = no2Aux, col = timeOfDay)
+plot(particles ~ carsHour, data = no2Aux, col = windDir+1) 
+# Wind direction somewhat separates the temperature wich makes sense
+plot(particles ~ temp2, data = no2Aux, col = windDir+1)
+# There's a wind direction for which the variance of the temperature difference is smaller than for the other
+plot(particles ~ tempDiff25to2, data = no2Aux, col = windDir+1)
+# There's a direction that gets higher wind speeds but there's not too much of a difference
+plot(particles ~ windSpeed, data = no2Aux, col = windDir+1)
+
+## It could be interesting to see when the "PREAVISO" level is reached which is the value for which in Madrid we get "Escenario 1"
+## The amount of NO2 needed to reach "PREAVISO" level is 180 mu g/m3
+## From the original article: https://www.sciencedirect.com/science/article/pii/S135223100500021X#sec8 we know that
+## the concentration of NO2 is measured in the same units as the "PREAVISO" level.
+## Due to the small amount of observations measuring above this value we think it's going to be hard to train a good classifier
+# DOES NOT WORK...
+no2Real = data.frame("particles" = exp(particles), "carsHour" = carsHour, "temp2" = temp2, "tempDiff25to2" = tempDiff25to2, "windSpeed" = windSpeed, "windDir" = no2$windDir)
+
+levelModel <- stepAIC(glm((particles > 120) ~ ., data = no2Real[1:350,]), k = log(length(particles)))
+summary(levelModel)
+plot(no2Real$particles>120 ~ carsHour)#, xlim = c(-100, 350))
+x <- seq(-100, 350, l = 2000)
+y <- exp(-(levelModel$coefficients[1] + levelModel$coefficients[2] * x))
+y <- 1 / (1 + y)
+lines(x, y, col = 2, lwd = 2)
+
+summary(predict(levelModel, newdata = data.frame(carsHour = 12, temp2 = -18, tempDiff25to2 = 11)))
+
+
