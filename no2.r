@@ -357,7 +357,28 @@ plot(particles ~ windSpeed, data = no2Aux, col = windDir+1)
 # DOES NOT WORK...
 no2Real = data.frame("particles" = exp(particles), "carsHour" = carsHour, "temp2" = temp2, "tempDiff25to2" = tempDiff25to2, "windSpeed" = windSpeed, "windDir" = no2$windDir)
 
-levelModel <- stepAIC(glm((particles > 120) ~ ., data = no2Real[1:350,]), k = log(length(particles)))
+###
+levelModel <- stepAIC(glm((particles > 180) ~ ., data = no2Real, family = "binomial"), k = log(length(particles)))
+summary(levelModel)
+plot(no2Real$particles>180 ~ tempDiff25to2)#, xlim = c(-100, 350))
+x <- seq(-100, 350, l = 2000)
+y <- exp(-(levelModel$coefficients[1] + levelModel$coefficients[2] * x))
+y <- 1 / (1 + y)
+lines(x, y, col = 2, lwd = 2)
+
+yHat <- levelModel$fitted.values > 0.5
+tab <- table(no2Real$particles > 180, yHat)
+# It misspredicts all the observations above 180
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+###
+levelModel <- stepAIC(glm((particles > 120) ~ ., data = no2Real, family="binomial"), k = log(length(particles)))
 summary(levelModel)
 plot(no2Real$particles>120 ~ carsHour)#, xlim = c(-100, 350))
 x <- seq(-100, 350, l = 2000)
@@ -365,6 +386,208 @@ y <- exp(-(levelModel$coefficients[1] + levelModel$coefficients[2] * x))
 y <- 1 / (1 + y)
 lines(x, y, col = 2, lwd = 2)
 
-summary(predict(levelModel, newdata = data.frame(carsHour = 12, temp2 = -18, tempDiff25to2 = 11)))
+yHat <- levelModel$fitted.values > 0.5
+tab <- table(no2Real$particles > 120, yHat)
+# As for 180, it predicts all the variables as being below 120, once again, the model is NOT right
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+###
+levelModel <- stepAIC(glm((particles > 50) ~ ., data = no2Real, family = "binomial"), k = log(length(particles)))
+summary(levelModel)
+plot(no2Real$particles>50 ~ carsHour)#, xlim = c(-100, 350))
+x <- seq(-100, 350, l = 2000)
+y <- exp(-(levelModel$coefficients[1] + levelModel$coefficients[2] * x))
+y <- 1 / (1 + y)
+lines(x, y, col = 2, lwd = 2)
+
+yHat <- levelModel$fitted.values > 0.5
+tab <- table(no2Real$particles > 50, yHat)
+# In this case it does a better job obtaining a 75% accuracy (WE COULD TRY SUPERVISED FOR THIS CASE)
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+## What if instead exponentiating, we take the logarithm of the barrier?
+levelModel <- stepAIC(glm(particles > log(180) ~ ., data = no2, family = "binomial"), k=log(length(particles)))
+summary(levelModel)
+plot(no2$particles>log(180) ~ windSpeed)#, xlim = c(-100, 350))
+x <- seq(-100, 350, l = 2000)
+y <- exp(-(levelModel$coefficients[1] + levelModel$coefficients[2] * x))
+y <- 1 / (1 + y)
+lines(x, y, col = 2, lwd = 2)
+
+yHat <- levelModel$fitted.values > 0.5
+tab <- table(no2$particles > log(180), yHat)
+# Same as in previous case
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+###
+levelModel <- stepAIC(glm(particles > log(120) ~ ., data = no2, family = "binomial"), k=log(length(particles)))
+summary(levelModel)
+plot(no2$particles>log(120) ~ windSpeed)#, xlim = c(-100, 350))
+x <- seq(-100, 350, l = 2000)
+y <- exp(-(levelModel$coefficients[1] + levelModel$coefficients[2] * x))
+y <- 1 / (1 + y)
+lines(x, y, col = 2, lwd = 2)
+
+yHat <- levelModel$fitted.values > 0.5
+tab <- table(no2$particles > log(120), yHat)
+# Same as in previous case 
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+###
+levelModel <- stepAIC(glm(particles > log(50) ~ ., data = no2, family = "binomial"), k=log(length(particles)))
+summary(levelModel)
+plot(no2$particles>log(50) ~ windSpeed)#, xlim = c(-100, 350))
+x <- seq(-100, 350, l = 2000)
+y <- exp(-(levelModel$coefficients[1] + levelModel$coefficients[2] * x))
+y <- 1 / (1 + y)
+lines(x, y, col = 2, lwd = 2)
+
+yHat <- levelModel$fitted.values > 0.5
+tab <- table(no2$particles > log(50), yHat)
+# Works better than when we exponentiate. Specially when looking at the true negative rate
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+###
+levelModel <- stepAIC(glm(particles > log(68) ~ ., data = no2, family = "binomial"), k=log(length(particles)))
+summary(levelModel)
+plot(no2$particles>log(68) ~ windSpeed)#, xlim = c(-100, 350))
+x <- seq(-100, 350, l = 2000)
+y <- exp(-(levelModel$coefficients[1] + levelModel$coefficients[2] * x))
+y <- 1 / (1 + y)
+lines(x, y, col = 2, lwd = 2)
+
+yHat <- levelModel$fitted.values > 0.5
+tab <- table(no2$particles > log(68), yHat)
+# By making it be higher than the third quartile the results improve
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+## What if we allow for interactions
+levelModelInt <- stepAIC(glm(particles > log(180) ~ .^2, data = no2, family = "binomial"), k = log(length(particles)))
+summary(levelModelInt)
+
+yHat <- levelModelInt$fitted.values > 0.5
+tab <- table(no2$particles > log(180), yHat)
+# We get a perfect fit in this case, which means we might be overfitting. TEST-TRAIN SPLIT!!!!!
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+###
+levelModelInt <- stepAIC(glm(particles > log(120) ~ .^2, data = no2, family = "binomial"), k = log(length(particles)))
+summary(levelModelInt)
+
+yHat <- levelModelInt$fitted.values > 0.5
+tab <- table(no2$particles > log(120), yHat)
+# We obtain the same results as when we do not allow for interactions
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+###
+levelModelInt <- stepAIC(glm(particles > log(50) ~ .^2, data = no2, family = "binomial"), k = log(length(particles)))
+summary(levelModelInt)
+
+yHat <- levelModelInt$fitted.values > 0.5
+tab <- table(no2$particles > log(50), yHat)
+# We obtain worse results than when we do not allow for interactions
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
+
+###
+levelModelInt <- stepAIC(glm(particles > log(68) ~ .^2, data = no2, family = "binomial"), k = log(length(particles)))
+summary(levelModelInt)
+
+yHat <- levelModelInt$fitted.values > 0.5
+tab <- table(no2$particles > log(68), yHat)
+# Pretty much the same results
+tab
+accuracy <- sum(diag(tab)) / sum(tab)
+accuracy
+tpr <- tab[1]/(tab[1]+tab[2])
+tpr
+tnr <- tab[4]/(tab[3]+tab[4])
+tnr
 
 
+
+### Try to obtain the season with the rest of the predictors
+summary(day)
+warmCold <- day
+for (i in 1:length(day)) {
+  if ((day[i] >= 0 && day[i] <= 91) || (day[i] >= 366 && day[i] <= 457)) {
+    warmCold[i] <- as.double(1)
+  }
+  else if ((day[i] >= 92 && day[i] <= 183) || (day[i] >= 458 && day[i] <= 549)) {
+    warmCold[i] <- as.double(1)
+  }
+  else if ((day[i] >= 184 && day[i] <= 275) || (day[i] >= 549 && day[i] <= 608)) {
+    warmCold[i] <- as.double(0)
+  }
+  else if (day[i] >= 276 && day[i] <= 365) {
+    warmCold[i] <- as.double(0)
+  }
+}
+
+no2WarmCold <- data.frame("particles" = particles, "carsHour" = carsHour, "temp2" = temp2, "tempDiff25to2" = tempDiff25to2, "windSpeed" = windSpeed, "windDir" = no2$windDir, "timeOfDay" = timeOfDay, "warmCold" = warmCold)
+## Unfinished
+seasonModel <- stepAIC(glm(warmCold ~ ., data = no2WarmCold, family = "binomial"), k = log(length(particles)))
+summary(seasonModel)
+
+
+
+
+
+######### TO DO:
+# Poisson regression on seasons
+# See what happens when we take the best model for the previous report and "convert" it into a logistic model
+# Do a Train-Test Split for the model that might be overfitting
+# Check the model correctness
